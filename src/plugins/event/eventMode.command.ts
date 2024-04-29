@@ -1,10 +1,9 @@
-import {useChatCommand} from "../../hooks/useChatCommand";
+import { useChatCommand } from "../../hooks/useChatCommand";
 import {
     ActionRowBuilder,
     BaseMessageOptions,
     ButtonBuilder,
     ButtonStyle,
-    ChatInputCommandInteraction,
     EmbedBuilder,
     inlineCode,
     PermissionFlagsBits,
@@ -12,8 +11,11 @@ import {
     time,
     TimestampStyles,
 } from "discord.js";
-import {SlashCommandBuilder, SlashCommandScope} from "../../builders/SlashCommandBuilder";
-import {NEXT_EVENT} from "../../globals";
+import {
+    SlashCommandBuilder,
+    SlashCommandScope,
+} from "../../structs/SlashCommandBuilder";
+import { NEXT_EVENT } from "../../globals";
 
 const builder = new SlashCommandBuilder()
     .setName("eventmode")
@@ -21,15 +23,25 @@ const builder = new SlashCommandBuilder()
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages)
     .setScope(SlashCommandScope.MAIN_GUILD)
     .addSubcommand((subcommand) =>
-        subcommand.setName("start").setDescription("Starts event mode."),
+        subcommand
+            .setName("start")
+            .setDescription(
+                "Kicks off event mode, time to throw another shrimp on the barbie!",
+            ),
     )
     .addSubcommand((subcommand) =>
-        subcommand.setName("stop").setDescription("Stops event mode."),
+        subcommand
+            .setName("stop")
+            .setDescription(
+                "Puts a stop to event mode, like closing up shop after a ripper day.",
+            ),
     )
     .addSubcommand((subcommand) =>
         subcommand
             .setName("prompt")
-            .setDescription("Displays the event mode prompt."),
+            .setDescription(
+                "Pops up the prompt for event mode, time to crack open a cold one.",
+            ),
     )
     .addSubcommandGroup((group) =>
         group
@@ -38,7 +50,9 @@ const builder = new SlashCommandBuilder()
             .addSubcommand((subcommand) =>
                 subcommand
                     .setName("image")
-                    .setDescription("Sets event mode prompt image.")
+                    .setDescription(
+                        "Sets the image for the event mode prompt, fair dinkum.",
+                    )
                     .addStringOption((option) =>
                         option
                             .setName("image_url")
@@ -49,7 +63,9 @@ const builder = new SlashCommandBuilder()
             .addSubcommand((subcommand) =>
                 subcommand
                     .setName("interval")
-                    .setDescription("Sets interval between event mode prompts.")
+                    .setDescription(
+                        "Sets how long between event mode prompts, like timing your snag on the barbie just right.",
+                    )
                     .addNumberOption((option) =>
                         option
                             .setName("interval")
@@ -65,50 +81,47 @@ const builder = new SlashCommandBuilder()
 
 const eventModes: Map<string, EventMode> = new Map();
 
-useChatCommand(
-    builder as SlashCommandBuilder,
-    (interaction: ChatInputCommandInteraction) => {
-        if (!interaction.channel) {
-            throw new Error("That command must only be run in a channel.");
-        }
-        const {channelId} = interaction;
-        let eventMode = eventModes.get(channelId);
-        if (!eventMode) {
-            eventMode = new EventMode(interaction.channel);
-            eventModes.set(channelId, eventMode);
-        }
+useChatCommand(builder as SlashCommandBuilder, (interaction) => {
+    if (!interaction.channel) {
+        throw new Error("That command must only be run in a channel.");
+    }
+    const { channelId } = interaction;
+    let eventMode = eventModes.get(channelId);
+    if (!eventMode) {
+        eventMode = new EventMode(interaction.channel);
+        eventModes.set(channelId, eventMode);
+    }
 
-        const subCommand = interaction.options.getSubcommand();
-        switch (subCommand) {
-            case "start":
-                if (eventMode.isRunning()) {
-                    return `Event mode is already running in this channel.`;
-                } else {
-                    eventMode.startTimer();
-                    return `Event mode started with a ${eventMode.timerInterval / 1000} second interval.`;
-                }
-            case "stop":
-                if (!eventMode.isRunning()) {
-                    return `Event mode is not currently running in this channel.`;
-                } else {
-                    eventMode.stopTimer();
-                    return `Event mode stopped.`;
-                }
-            case "image":
-                const imageUrl = interaction.options.getString("image_url", true);
-                eventMode.setImage(imageUrl);
-                return `Event mode prompt image set to ${imageUrl}`;
-            case "interval":
-                const interval = interaction.options.getNumber("interval", true);
-                eventMode.setTimerInterval(interval);
-                return `Event mode prompt interval set to ${inlineCode(
-                    `${interval}s`,
-                )}`;
-            default:
-                return eventMode.getPrompt();
-        }
-    },
-);
+    const subCommand = interaction.options.getSubcommand();
+    switch (subCommand) {
+        case "start":
+            if (eventMode.isRunning()) {
+                return `Event mode is already running in this channel.`;
+            } else {
+                eventMode.startTimer();
+                return `Event mode started with a ${eventMode.timerInterval / 1000} second interval.`;
+            }
+        case "stop":
+            if (!eventMode.isRunning()) {
+                return `Event mode is not currently running in this channel.`;
+            } else {
+                eventMode.stopTimer();
+                return `Event mode stopped.`;
+            }
+        case "image":
+            const imageUrl = interaction.options.getString("image_url", true);
+            eventMode.setImage(imageUrl);
+            return `Event mode prompt image set to ${imageUrl}`;
+        case "interval":
+            const interval = interaction.options.getNumber("interval", true);
+            eventMode.setTimerInterval(interval);
+            return `Event mode prompt interval set to ${inlineCode(
+                `${interval}s`,
+            )}`;
+        default:
+            return eventMode.getPrompt();
+    }
+});
 
 class EventMode {
     image: string;
@@ -117,14 +130,14 @@ class EventMode {
     timer?: NodeJS.Timeout;
 
     constructor(channel: TextBasedChannel) {
-        this.image = "https://i.imgur.com/Il6SgqB.png";
+        this.image = "https://i.imgur.com/TTLYc3D.png";
         this.timerInterval = 60000;
         this.channel = channel;
     }
 
     getPrompt(): BaseMessageOptions {
         if (!NEXT_EVENT) {
-            return {content: "No event is planned at this time."};
+            return { content: "No event is planned at this time." };
         }
         const eventDate = new Date(NEXT_EVENT.timestamp);
         const embed = new EmbedBuilder()
@@ -133,13 +146,13 @@ class EventMode {
                 `The event ${
                     Date.now() > eventDate.getTime() ? "began" : "begins"
                 } ${time(
-                    eventDate,  
+                    eventDate,
                     TimestampStyles.RelativeTime,
                 )}. Watch at the links below.`,
             )
             .setImage(this.image)
-            .setColor("Aqua");
-        const actionRow = new ActionRowBuilder().addComponents(
+            .setColor(NEXT_EVENT?.color ?? "White");
+        const actionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
             new ButtonBuilder()
                 .setLabel("Apple Website")
                 .setStyle(ButtonStyle.Link)
@@ -147,14 +160,13 @@ class EventMode {
             new ButtonBuilder()
                 .setLabel("YouTube")
                 .setStyle(ButtonStyle.Link)
-                .setURL("https://youtu.be/ZiP1l7jlIIA"),
+                .setURL("https://youtu.be/ctkW3V0Mh-k"),
             new ButtonBuilder()
                 .setLabel("Leaked Event Footage")
                 .setStyle(ButtonStyle.Link)
                 .setURL("https://youtu.be/ZoG5jJ3E8rg"),
         );
-        //@ts-ignore
-        return {embeds: [embed], components: [actionRow]};
+        return { embeds: [embed], components: [actionRow] };
     }
 
     startTimer(timerInterval: number = this.timerInterval) {

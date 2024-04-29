@@ -1,8 +1,14 @@
-import {model, Schema} from "mongoose";
+import { model, Schema } from "mongoose";
 import cryptoRandomString from "crypto-random-string";
-import {useClient} from "../../hooks";
-import {EmbedBuilder, inlineCode, time, TimestampStyles, userMention} from "discord.js";
-import {CHANNELS, GUILDS} from "../../globals";
+import { useClient } from "../../hooks";
+import {
+    EmbedBuilder,
+    inlineCode,
+    time,
+    TimestampStyles,
+    userMention,
+} from "discord.js";
+import { CHANNELS, GUILDS } from "../../globals";
 
 export enum CaseType {
     WARN = "WARN",
@@ -23,17 +29,18 @@ export interface ICase {
     reason?: string;
     createdAtTimestamp: string;
     userNotified: boolean;
+    imported: boolean;
 }
 
 const caseSchema = new Schema<ICase>({
     _id: String,
-    type: {type: String, enum: CaseType},
-    guild: {type: String, required: true},
+    type: { type: String, enum: CaseType },
+    guild: { type: String, required: true },
     deleted: {
         type: Boolean,
         default: false,
     },
-    target: {type: String, required: true},
+    target: { type: String, required: true },
     executor: String,
     duration: Number,
     reason: String,
@@ -44,6 +51,10 @@ const caseSchema = new Schema<ICase>({
         },
     },
     userNotified: Boolean,
+    imported: {
+        type: Boolean,
+        default: false,
+    },
 });
 
 //ID creation middleware
@@ -51,7 +62,7 @@ caseSchema.pre("save", async function () {
     if (!this.isNew) return;
     let id;
     do {
-        id = cryptoRandomString({length: 10, type: "distinguishable"});
+        id = cryptoRandomString({ length: 10, type: "distinguishable" });
     } while (await Case.findById(id));
     this._id = id;
 });
@@ -66,10 +77,16 @@ friendlyNames.set(CaseType.WARN, "warned in");
 friendlyNames.set(CaseType.UNBAN, "unbanned from");
 caseSchema.pre("save", async function () {
     if (!this.isNew) return;
+    if (this.imported) {
+        this.userNotified = false;
+        return;
+    }
     try {
-        const user = await useClient().client.users.fetch(this.target);
-        const guild = await useClient().client.guilds.fetch(this.guild);
-        await user.send(`You have been ${friendlyNames.get(this.type)} ${guild.name}${this.reason ? ` for ${inlineCode(this.reason)}` : ""}.${this.duration ? ` Expiry: ${time(new Date(parseInt(this.createdAtTimestamp) + this.duration), TimestampStyles.RelativeTime)}` : ""}${this.type === CaseType.BAN ? "\nAppeal at https://rapple.xyz/appeals" : ""}`);
+        const user = await useClient().users.fetch(this.target);
+        const guild = await useClient().guilds.fetch(this.guild);
+        await user.send(
+            `You have been ${friendlyNames.get(this.type)} ${guild.name}${this.reason ? ` for ${inlineCode(this.reason)}` : ""}.${this.duration ? ` Expiry: ${time(new Date(parseInt(this.createdAtTimestamp) + this.duration), TimestampStyles.RelativeTime)}` : ""}${this.type === CaseType.BAN ? "\nAppeal at https://rapple.xyz/appeals" : ""}`,
+        );
         this.userNotified = true;
     } catch {
         this.userNotified = false;
@@ -78,26 +95,26 @@ caseSchema.pre("save", async function () {
 
 const getUsernameFromId = async (id: string) => {
     try {
-        const user = await useClient().client.users.fetch(id);
+        const user = await useClient().users.fetch(id);
         return user.username;
     } catch {
         return null;
     }
-}
+};
 
 //Logging middleware
 caseSchema.pre("save", async function () {
     if (!this.isNew) return;
     if (this.guild !== GUILDS.MAIN) return;
-    const channel = await useClient().client.channels.fetch(
-        CHANNELS.MAIN.case_log,
-    );
+    const channel = await useClient().channels.fetch(CHANNELS.MAIN.case_log);
     if (channel?.isTextBased()) {
         const embed = new EmbedBuilder()
-            .setTitle("✅ New Case Generated")
-            .addFields({name: "Type", value: this.type, inline: true})
+            .setTitle(`✅ New Case ${this.imported ? "Imported" : "Generated"}`)
+            .addFields({ name: "Type", value: this.type, inline: true })
             .setColor("Fuchsia")
-            .setFooter({text: `${this._id} • ${this.userNotified ? "User has been notified" : "User has not been notified"}`});
+            .setFooter({
+                text: `${this._id} • ${this.userNotified ? "User has been notified" : "User has not been notified"}`,
+            });
         if (this.duration) {
             embed.addFields({
                 name: "Expiry",
@@ -124,7 +141,7 @@ caseSchema.pre("save", async function () {
             name: "Reason",
             value: this.reason ?? "No reason specified.",
         });
-        channel.send({content: this._id, embeds: [embed]});
+        channel.send({ content: this._id, embeds: [embed] });
     }
 });
 

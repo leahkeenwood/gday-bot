@@ -1,18 +1,26 @@
-import {ChatInputCommandInteraction, inlineCode, PermissionFlagsBits} from "discord.js";
-import {SlashCommandBuilder, SlashCommandScope} from "../../../builders/SlashCommandBuilder";
-import {useChatCommand} from "../../../hooks/useChatCommand";
+import { inlineCode, PermissionFlagsBits } from "discord.js";
+import {
+    SlashCommandBuilder,
+    SlashCommandScope,
+} from "../../../structs/SlashCommandBuilder";
+import { useChatCommand } from "../../../hooks/useChatCommand";
 
 const builder = new SlashCommandBuilder()
     .setName("say")
-    .setDescription("Make G'day say a message.")
+    .setDescription(
+        "Makes me, G’day, have a chinwag and say a message, like having a yarn with a mate.\n",
+    )
     .addStringOption((option) =>
-        option.setName("message").setDescription("Message to say").setRequired(true),
+        option
+            .setName("message")
+            .setDescription("Message to say")
+            .setRequired(true),
     )
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages)
     .setEphemeral(true)
     .setScope(SlashCommandScope.GLOBAL);
 
-useChatCommand(builder, async (interaction: ChatInputCommandInteraction) => {
+useChatCommand(builder, async (interaction) => {
     const message = interaction.options.getString("message", true);
     if (!interaction.channel) {
         throw new Error("Channel undefined.");

@@ -1,8 +1,9 @@
-import {ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, userMention} from "discord.js";
+import { ButtonStyle, EmbedBuilder, userMention } from "discord.js";
 import express from "express";
 import cors from "cors";
 import morgan from "morgan";
-import {useClient} from "../../hooks";
+import { useClient } from "../../hooks";
+import { GdayButtonBuilder } from "../../structs/GdayButtonBuilder";
 
 const app = express();
 
@@ -15,27 +16,26 @@ app.get("/", (req, res) => {
 });
 
 app.get("/guild-info", async (req, res) => {
-    const {client} = useClient();
-    const guild = await client.guilds.fetch("332309672486895637");
+    const guild = await useClient().guilds.fetch("332309672486895637");
 
     res.status(200).json({
-        iconURL: guild.iconURL({size: 128}),
+        iconURL: guild.iconURL({ size: 128 }),
         members: guild.memberCount,
-        bannerURL: guild.bannerURL({size: 2048}),
+        bannerURL: guild.bannerURL({ size: 2048 }),
     });
 });
 
 app.post("/ban-appeal", async (req, res) => {
-    const {tag, id, reason} = req.body;
+    const { tag, id, reason } = req.body;
     if (!tag || !id || !reason) {
         return res.status(400).json({
             error: "Missing required parameters",
         });
     }
     try {
-        const {client} = useClient();
-        const appealChannel = await client.channels.fetch("700365232542973979");
-        const rApple = await client.guilds.fetch("332309672486895637");
+        const appealChannel =
+            await useClient().channels.fetch("700365232542973979");
+        const rApple = await useClient().guilds.fetch("332309672486895637");
         const ban = await rApple.bans.fetch(id);
         if (!appealChannel || !appealChannel.isTextBased()) {
             throw new Error("Could not find appeal channel");
@@ -45,7 +45,7 @@ app.post("/ban-appeal", async (req, res) => {
             .setDescription(`${userMention(id)}`)
             .setColor("Blue")
             .addFields(
-                {name: "User", value: `${tag} (${id})`, inline: true},
+                { name: "User", value: `${tag} (${id})`, inline: true },
                 {
                     name: "Ban Reason",
                     value: ban.reason ?? "No reason found",
@@ -56,23 +56,21 @@ app.post("/ban-appeal", async (req, res) => {
                     value: reason,
                 },
             );
-        const actionRow = new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-                .setLabel("Unban")
-                .setStyle(ButtonStyle.Success)
-                .setCustomId(`appeal-unban-${id}`),
-        );
         await appealChannel.send({
             content: `${id}`,
             embeds: [embed],
-            //@ts-ignore
-            components: [actionRow],
+            components: [
+                new GdayButtonBuilder("appeal:unban")
+                    .setLabel("Unban")
+                    .setStyle(ButtonStyle.Success)
+                    .addArg(id)
+                    .asActionRow(),
+            ],
             allowedMentions: {
                 users: [],
             },
         });
         return res.status(200).json("Submitted appeal");
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
         if (error.code === 50035) {
             return res.status(400).json({
@@ -80,8 +78,7 @@ app.post("/ban-appeal", async (req, res) => {
             });
         } else if (error.code === 10026) {
             return res.status(400).json({
-                error:
-                    "You are not banned from r/Apple. Ensure your user ID is correct.",
+                error: "You are not banned from r/Apple. Ensure your user ID is correct.",
             });
         } else {
             console.error(error);

@@ -1,12 +1,25 @@
-import {bold, ChatInputCommandInteraction, PermissionFlagsBits, userMention} from "discord.js";
-import {SlashCommandBuilder, SlashCommandScope} from "../../builders/SlashCommandBuilder";
-import {Case} from "./Case.model";
-import {useChatCommand} from "../../hooks/useChatCommand";
+import {
+    ActionRowBuilder,
+    bold,
+    ButtonBuilder,
+    ButtonInteraction,
+    ButtonStyle,
+    Message,
+    PermissionFlagsBits,
+    userMention,
+} from "discord.js";
+import {
+    SlashCommandBuilder,
+    SlashCommandScope,
+} from "../../structs/SlashCommandBuilder";
+import { Case, ICase } from "./Case.model";
+import { useButton, useChatCommand, usePagination } from "../../hooks";
+import { GdayButtonBuilder } from "../../structs/GdayButtonBuilder";
 
 const builder = new SlashCommandBuilder()
     .setName("cases")
     .setDescription(
-        "Searches all cases in the guild, filtered by the given parameters.",
+        "Has a squiz at all the cases in the guild, filtered by your specs.",
     )
     .setDefaultMemberPermissions(PermissionFlagsBits.KickMembers)
     .setScope(SlashCommandScope.MAIN_GUILD)
@@ -21,57 +34,51 @@ const builder = new SlashCommandBuilder()
             .setName("type")
             .setDescription("Case type.")
             .setChoices(
-                {name: "Warn", value: "WARN"},
-                {name: "Ban", value: "BAN"},
-                {name: "Unban", value: "UNBAN"},
-                {name: "Kick", value: "KICK"},
-                {name: "Timeout", value: "TIMEOUT"},
+                { name: "Warn", value: "WARN" },
+                { name: "Ban", value: "BAN" },
+                { name: "Unban", value: "UNBAN" },
+                { name: "Kick", value: "KICK" },
+                { name: "Timeout", value: "TIMEOUT" },
             ),
     );
+useChatCommand(builder as SlashCommandBuilder, async (interaction) => {
+    //Create a filter and push it to messagesToFilters
+    const executor = interaction.options.getUser("executor");
+    const target = interaction.options.getUser("target");
+    const type = interaction.options.getString("type");
+    let filter: any = {
+        deleted: false,
+    };
+    if (executor) {
+        filter.executor = executor.id;
+    }
+    if (target) {
+        filter.target = target.id;
+    }
+    if (type) {
+        filter.type = type;
+    }
 
-useChatCommand(
-    builder as SlashCommandBuilder,
-    async (interaction: ChatInputCommandInteraction) => {
-
-        const executor = interaction.options.getUser("executor");
-        const target = interaction.options.getUser("target");
-        const type = interaction.options.getString("type");
-        let filter: any = {
-            deleted: false,
-        };
-        if (executor) {
-            filter.executor = executor.id;
+    const stringify = (result: ICase) => {
+        let str = `${bold(result._id)} - ${result.type} on ${userMention(
+            result.target,
+        )}`;
+        if (result.executor) {
+            str += ` by ${userMention(result.executor)}`;
         }
-        if (target) {
-            filter.target = target.id;
+        if (result.reason) {
+            str += ` for ${result.reason}`;
         }
-        if (type) {
-            filter.type = type;
-        }
-        const count = await Case.count(filter);
+        return str;
+    };
 
-        if (count < 1) {
-            return `There are no cases that match your search query! 🤠`;
-        }
-        const results = await Case.find(filter)
-            .sort({createdAtTimestamp: "desc"})
-            .limit(6);
-
-        const resultsList = results.reduce((acc, result) => {
-            let currentStr = `${bold(result._id)} - ${result.type} on ${userMention(
-                result.target,
-            )}`;
-            if (result.executor) {
-                currentStr += ` by ${userMention(result.executor)}`;
-            }
-            if (result.reason) {
-                currentStr += ` for ${result.reason}`;
-            }
-            return acc + `\n- ${currentStr.replaceAll("\n", " ")}`;
-        }, "");
-
-        return `I found ${count.toLocaleString()} cases that match what you're looking for. ${
-            count > 6 ? "Here are the latest 6!" : "Here they are!"
-        } \n${resultsList}`;
-    },
-);
+    return usePagination<ICase>({
+        preamble: "Found %count cases that fit the bill. Here ya go cobber!",
+        emptyMsg:
+            "Sorry mate, couldn't find any cases that match your search! 🤠",
+        query: Case.find(filter).sort({ createdAtTimestamp: "desc" }),
+        stringify,
+        perPage: 6,
+        owner: interaction.user.id,
+    });
+});

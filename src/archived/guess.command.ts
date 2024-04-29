@@ -1,7 +1,10 @@
-import {useChatCommand} from "../hooks/useChatCommand";
-import {SlashCommandBuilder, SlashCommandScope} from "../builders/SlashCommandBuilder";
-import {Guess} from "./Guess.model";
-import {ChatInputCommandInteraction, EmbedBuilder, PermissionFlagsBits} from "discord.js";
+import { useChatCommand } from "../hooks/useChatCommand";
+import {
+    SlashCommandBuilder,
+    SlashCommandScope,
+} from "../structs/SlashCommandBuilder";
+import { Guess } from "./Guess.model";
+import { EmbedBuilder, PermissionFlagsBits } from "discord.js";
 
 let guessEnabled = true;
 
@@ -19,40 +22,35 @@ useChatCommand(enableGuessBuilder, () => {
 
 const guessBuilder = new SlashCommandBuilder()
     .setName("guess")
-    .setDescription(
-        "Guess the name of macOS 14.",
-    )
+    .setDescription("Guess the name of macOS 14.")
     .addStringOption((option) =>
         option
             .setName("name")
-            .setDescription(
-                "Your guess for the name of macOS.",
-            )
+            .setDescription("Your guess for the name of macOS.")
             .setRequired(true),
     )
     .setScope(SlashCommandScope.MAIN_GUILD)
     .setEphemeral(true);
 
 const toTitleCase = (str: string): string => {
-    return str.replace(
-        /\w\S*/g,
-        (txt: string): string => {
-            return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
-        },
-    );
+    return str.replace(/\w\S*/g, (txt: string): string => {
+        return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
+    });
 };
 
-useChatCommand(guessBuilder, async (interaction: ChatInputCommandInteraction) => {
+useChatCommand(guessBuilder, async (interaction) => {
     const userId = interaction.user.id;
     const userGuess = toTitleCase(interaction.options.getString("name", true));
 
     if (!guessEnabled) {
         const embed = new EmbedBuilder()
             .setTitle("macOS Name Guess is not enabled")
-            .setDescription("Sorry, but you're not able to set your guess right now.")
+            .setDescription(
+                "Sorry, but you're not able to set your guess right now.",
+            )
             .setColor("Red");
 
-        let guess = await Guess.findOne({user: userId});
+        let guess = await Guess.findOne({ user: userId });
 
         if (guess) {
             embed.addFields({
@@ -68,9 +66,9 @@ useChatCommand(guessBuilder, async (interaction: ChatInputCommandInteraction) =>
     }
 
     let guess = await Guess.findOneAndUpdate(
-        {user: userId},
-        {user: userId, guess: userGuess},
-        {new: true, upsert: true},
+        { user: userId },
+        { user: userId, guess: userGuess },
+        { new: true, upsert: true },
     );
 
     const embed = new EmbedBuilder()

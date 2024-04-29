@@ -1,21 +1,26 @@
-import {useChatCommand} from "../../../hooks/useChatCommand";
-import {SlashCommandBuilder, SlashCommandScope} from "../../../builders/SlashCommandBuilder";
+import { useChatCommand } from "../../../hooks/useChatCommand";
+import {
+    SlashCommandBuilder,
+    SlashCommandScope,
+} from "../../../structs/SlashCommandBuilder";
 import {
     ActionRowBuilder,
     BaseMessageOptions,
     ButtonBuilder,
     ButtonStyle,
-    ChatInputCommandInteraction,
+    cleanContent,
     EmbedBuilder,
-    Interaction,
     Message,
     User,
 } from "discord.js";
-import {useEvent} from "../../../hooks";
+import { GdayButtonBuilder } from "../../../structs/GdayButtonBuilder";
+import { useButton } from "../../../hooks/useButton";
 
 const builder = new SlashCommandBuilder()
     .setName("poll")
-    .setDescription("Creates a poll.")
+    .setDescription(
+        "Gets the convo going with a poll, find out what the mob reckons.",
+    )
     .addStringOption((option) =>
         option
             .setName("question")
@@ -26,35 +31,29 @@ const builder = new SlashCommandBuilder()
 
 const polls = new Map<string, PollCommand>();
 
-useChatCommand(builder, async (interaction: ChatInputCommandInteraction) => {
+useChatCommand(builder, async (interaction) => {
     const message = await interaction.fetchReply();
+    if (!interaction.channel) {
+        throw new Error("Poll can only be used in channels.");
+    }
     const poll = new PollCommand(
-        interaction.options.getString("question", true),
+        cleanContent(
+            interaction.options.getString("question", true),
+            interaction.channel,
+        ),
         message,
     );
     polls.set(message.id, poll);
     return poll.getMessage();
 });
 
-useEvent("interactionCreate", async (interaction: Interaction) => {
-    if (!interaction.isButton()) {
-        return;
-    }
-    const [type, action] = interaction.customId.split("-");
-    if (type !== "poll") {
-        return;
-    }
-    await interaction.deferReply({ephemeral: true});
-
+useButton("poll:vote", async (interaction, args) => {
+    await interaction.deferReply({ ephemeral: true });
     const poll = polls.get(interaction.message.id);
     if (!poll) {
-        await interaction.editReply("That poll can no longer be found.");
-        return;
+        throw new Error("That poll no longer exists");
     }
-
-    await interaction.editReply(
-        poll.setVote(interaction.user, action as "yes" | "no"),
-    );
+    return poll.setVote(interaction.user, args[0] as "yes" | "no");
 });
 
 class PollCommand {
@@ -71,9 +70,9 @@ class PollCommand {
     countVotes = () => {
         return Array.from(this.users.values()).reduce(
             (acc, vote) => {
-                return Object.assign(acc, {[vote]: acc[vote] + 1});
+                return Object.assign(acc, { [vote]: acc[vote] + 1 });
             },
-            {yes: 0, no: 0},
+            { yes: 0, no: 0 },
         );
     };
 
@@ -94,21 +93,20 @@ class PollCommand {
                 },
             )
             .setColor("Blurple");
-        const actionRow = new ActionRowBuilder()
+        const actionRow = new ActionRowBuilder<ButtonBuilder>()
             .addComponents(
-                new ButtonBuilder()
-                    .setCustomId("poll-yes")
+                new GdayButtonBuilder("poll:vote")
                     .setStyle(ButtonStyle.Success)
-                    .setLabel("Yes"),
-                new ButtonBuilder()
-                    .setCustomId("poll-no")
+                    .setLabel("Yes")
+                    .addArg("yes"),
+                new GdayButtonBuilder("poll:vote")
                     .setStyle(ButtonStyle.Danger)
-                    .setLabel("No"),
+                    .setLabel("No")
+                    .addArg("no"),
             )
             .toJSON();
         return {
             embeds: [embed],
-            //@ts-ignore
             components: [actionRow],
         };
     };

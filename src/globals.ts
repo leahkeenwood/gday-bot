@@ -1,18 +1,19 @@
+import { ColorResolvable } from "discord.js";
+
 interface NextEvent {
     name: string;
     timestamp: number;
     image: string;
-    color: string;
+    color: ColorResolvable;
 }
 
 //Timestamp is in ms
-export const NEXT_EVENT: null | NextEvent = null; /*{
-    name: "Wonderlust",
-    timestamp: 1694538000000,
-    image: "https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExcGV4dXgwOTI3OWxvbDUxc3R0cTB1ZTJ3ZzdqamVycjdqbWtkbGQwNSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/rFojqMvKmk3ZCliupx/giphy.gif",
-    color: "#7cb1d6",
-};*/
-
+export const NEXT_EVENT: null | NextEvent = {
+    name: "WWDC 2024",
+    timestamp: 1718038800000,
+    image: "https://www.apple.com/newsroom/images/2024/03/apples-worldwide-developers-conference-returns-june-10-2024/article/Apple-WWDC24-event-announcement-hero_big.jpg.large_2x.jpg",
+    color: "#93f7f9",
+};
 
 //THESE GUILD IDS ARE MIRRORED SlashCommandBuilder, CHANGE THEM THERE TOO
 export const GUILDS = {
@@ -24,13 +25,22 @@ export const CHANNELS = {
     MAIN: {
         case_log: "1126077157895053312",
         log: "1120432710830280784",
+        santa_applications: "1045659665771540511",
+    },
+    STAFF: {
+        modmail_parent: "582568757575024640",
+        modmail_logs: "582572653710409748",
+    },
+    APPEALS: {
+        unban_announcements: "934958626257375244",
     },
 };
 export const ROLES = {
     MAIN: {
         established: "881503056091557978",
-        event_reserved: "1146906660212850769",
+        event_reserved: "1166975824524738560",
         mod_squad: "334889410006876161",
         plus: "338950814108483586",
+        santa_squad: "",
     },
 };

@@ -1,11 +1,14 @@
-import {useChatCommand} from "../../hooks/useChatCommand";
-import {SlashCommandBuilder, SlashCommandScope} from "../../builders/SlashCommandBuilder";
-import {NEXT_EVENT} from "../../globals";
-import {EmbedBuilder, time, TimestampStyles} from "discord.js";
+import { useChatCommand } from "../../hooks/useChatCommand";
+import {
+    SlashCommandBuilder,
+    SlashCommandScope,
+} from "../../structs/SlashCommandBuilder";
+import { NEXT_EVENT } from "../../globals";
+import { EmbedBuilder, time, TimestampStyles } from "discord.js";
 
 const builder = new SlashCommandBuilder()
     .setName("event")
-    .setDescription("Displays information about the next Apple event.")
+    .setDescription("Throws up info on the next Apple event!")
     .setScope(SlashCommandScope.MAIN_GUILD);
 
 useChatCommand(builder, () => {
@@ -22,7 +25,7 @@ useChatCommand(builder, () => {
                 afterEvent ? "started" : "starts"
             } at ${time(eventDate, TimestampStyles.ShortDateTime)}`,
         )
-        .setColor("Aqua")
+        .setColor(NEXT_EVENT?.color ?? "White")
         .setThumbnail(event.image)
         .addFields({
             name: "Time to Event",
@@ -31,6 +34,6 @@ useChatCommand(builder, () => {
                 TimestampStyles.RelativeTime,
             )}`,
         })
-        .setFooter({text: "All times shown in your local time zone."});
-    return {embeds: [embed]};
+        .setFooter({ text: "All times shown in your local time zone." });
+    return { embeds: [embed] };
 });
